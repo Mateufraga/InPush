@@ -1,6 +1,6 @@
 Flask==3.0.3
 openai==1.35.10
-dotenv==1.0.1
+dotenv
 
 
 
