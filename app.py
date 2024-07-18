@@ -3,6 +3,7 @@ import time
 from flask import Flask, request, jsonify
 from openai import OpenAI
 from dotenv import load_dotenv
+import concurrent.futures
 
 load_dotenv("key.env")
 
@@ -14,14 +15,7 @@ client = OpenAI(api_key=openai_api_key)
 
 app = Flask(__name__)
 
-@app.route('/InPush', methods=['POST'])
-def ask_assistant():
-    data = request.get_json()
-    user_message = data.get("message", "")
-
-    if not user_message:
-        return jsonify({"error": "No message provided"}), 400
-
+def process_request(user_message):
     try:
         thread = client.beta.threads.create(
             messages=[
@@ -33,26 +27,37 @@ def ask_assistant():
         )
 
         run = client.beta.threads.runs.create(thread_id=thread.id, assistant_id=ASSISTANT_ID)
-        print(f"👉 Run Created: {run.id}")
 
         while run.status != "completed":
             run = client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
-            print(f"🏃 Run Status: {run.status}")
             time.sleep(1)
-        else:
-            print(f"🏁 Run Completed!")
 
         message_response = client.beta.threads.messages.list(thread_id=thread.id)
         messages = message_response.data
 
-       
         latest_message = messages[0].content[0].text.value
-        print(f"💬 Response: {latest_message}")
+
+        return latest_message
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return {"error": str(e)}
 
-    return jsonify({"response": latest_message})
+@app.route('/InPush', methods=['POST'])
+def ask_assistant():
+    data = request.get_json()
+    user_message = data.get("message", "")
+
+    if not user_message:
+        return jsonify({"error": "No message provided"}), 400
+
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        future = executor.submit(process_request, user_message)
+        response = future.result()
+
+    if isinstance(response, dict) and "error" in response:
+        return jsonify({"error": response["error"]}), 500
+
+    return jsonify({"response": response})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
