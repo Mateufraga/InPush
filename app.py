@@ -1,6 +1,6 @@
 import os
 import time
-from flask import Flask, request, jsonify
+from fastapi import FastAPI, Request
 from openai import OpenAI
 from dotenv import load_dotenv
 import concurrent.futures
@@ -13,7 +13,7 @@ OpenAI.api_key = openai_api_key
 ASSISTANT_ID = "asst_sqswGlhWTMoyBGAnByXnC8GB"
 client = OpenAI(api_key=openai_api_key)
 
-app = Flask(__name__)
+app = FastAPI()
 
 def process_request(user_message):
     try:
@@ -42,22 +42,23 @@ def process_request(user_message):
     except Exception as e:
         return {"error": str(e)}
 
-@app.route('/InPush', methods=['POST'])
-def ask_assistant():
-    data = request.get_json()
+@app.post('/InPush')
+async def ask_assistant(request: Request):
+    data = await request.json()
     user_message = data.get("message", "")
 
     if not user_message:
-        return jsonify({"error": "No message provided"}), 400
+        return {"error": "No message provided"}
 
     with concurrent.futures.ThreadPoolExecutor() as executor:
         future = executor.submit(process_request, user_message)
         response = future.result()
 
     if isinstance(response, dict) and "error" in response:
-        return jsonify({"error": response["error"]}), 500
+        return {"error": response["error"]}
 
-    return jsonify({"response": response})
+    return {"response": response}
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    import uvicorn
+    uvicorn.run(app, host='0.0.0.0', port=5000)

@@ -1,5 +1,4 @@
-Flask==3.0.3
+fastapi==0.70.0
+uvicorn==0.15.0
 openai==1.35.10
-python-dotenv
-
-
+python-dotenv==0.19.2
