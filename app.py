@@ -30,7 +30,6 @@ def process_request(user_message):
 
         while run.status != "completed":
             run = client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
-            time.sleep(1)
 
         message_response = client.beta.threads.messages.list(thread_id=thread.id)
         messages = message_response.data
