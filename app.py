@@ -17,26 +17,37 @@ app = FastAPI()
 
 def process_request(user_message):
     try:
-        thread = client.beta.threads.create(
-            messages=[
-                {
-                    "role": "user",
-                    "content": user_message,
-                }
-            ]
-        )
+        # Tentar várias vezes se a solicitação falhar
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                thread = client.beta.threads.create(
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": user_message,
+                        }
+                    ]
+                )
 
-        run = client.beta.threads.runs.create(thread_id=thread.id, assistant_id=ASSISTANT_ID)
+                run = client.beta.threads.runs.create(thread_id=thread.id, assistant_id=ASSISTANT_ID)
 
-        while run.status != "completed":
-            run = client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
+                while run.status != "completed":
+                    time.sleep(1)  # Adicionar um pequeno atraso para evitar loop ocupando CPU
+                    run = client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
 
-        message_response = client.beta.threads.messages.list(thread_id=thread.id)
-        messages = message_response.data
+                message_response = client.beta.threads.messages.list(thread_id=thread.id)
+                messages = message_response.data
 
-        latest_message = messages[0].content[0].text.value
+                latest_message = messages[0].content[0].text.value
 
-        return latest_message
+                return latest_message
+
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    time.sleep(2 ** attempt)  # Exponential backoff
+                else:
+                    return {"error": str(e)}
 
     except Exception as e:
         return {"error": str(e)}
