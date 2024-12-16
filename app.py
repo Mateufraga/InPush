@@ -17,7 +17,6 @@ app = FastAPI()
 
 def process_request(user_message):
     try:
-        # Tentar várias vezes se a solicitação falhar
         max_retries = 3
         for attempt in range(max_retries):
             try:
@@ -33,7 +32,7 @@ def process_request(user_message):
                 run = client.beta.threads.runs.create(thread_id=thread.id, assistant_id=ASSISTANT_ID)
 
                 while run.status != "completed":
-                    time.sleep(1)  # Adicionar um pequeno atraso para evitar loop ocupando CPU
+                    time.sleep(1) 
                     run = client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
 
                 message_response = client.beta.threads.messages.list(thread_id=thread.id)
@@ -45,7 +44,7 @@ def process_request(user_message):
 
             except Exception as e:
                 if attempt < max_retries - 1:
-                    time.sleep(2 ** attempt)  # Exponential backoff
+                    time.sleep(2 ** attempt)  
                 else:
                     return {"error": str(e)}
 
